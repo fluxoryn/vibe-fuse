@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>VibeFuse — Mood to Gradient</title>
+  <style>
+    /* Minimal, modern base styles */
+    :root{
+      --bg:#0f1724;
+      --card:#0b1220;
+      --muted:#9aa4b2;
+      --accent: #7dd3fc;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    }
+    html,body{height:100%;margin:0;background:var(--bg);color:#e6eef6}
+    .app{
+      max-width:900px;margin:32px auto;padding:20px;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));border-radius:12px;box-shadow:0 6px 30px rgba(2,6,23,0.6);
+    }
+    header{display:flex;align-items:center;gap:12px}
+    header h1{margin:0;font-size:20px;letter-spacing:0.2px}
+    .controls{display:flex;gap:12px;margin-top:18px;flex-wrap:wrap}
+    .card{background:var(--card);padding:14px;border-radius:10px;flex:1;min-width:220px}
+    label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px}
+    input[type="text"]{width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit}
+    button{appearance:none;border:0;padding:10px 12px;border-radius:8px;background:var(--accent);color:#04202b;font-weight:600;cursor:pointer}
+    .preview{height:260px;border-radius:10px;margin-top:14px;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,0.9);font-weight:700}
+    .presets{margin-top:14px;display:flex;flex-wrap:wrap;gap:8px}
+    .preset{background:rgba(255,255,255,0.04);padding:8px;border-radius:8px;cursor:pointer;font-size:13px}
+    footer{margin-top:18px;font-size:12px;color:var(--muted)}
+    .small{font-size:12px;color:var(--muted)}
+  </style>
+</head>
+<body>
+  <main class="app" id="app">
+    <header>
+      <h1>VibeFuse</h1>
+      <div class="small">Type a mood, press Generate — save palettes as presets.</div>
+    </header>
+
+    <section class="controls">
+      <div class="card" id="controls-card">
+        <label for="mood">Mood (single word or short phrase)</label>
+        <input id="mood" type="text" placeholder="e.g. chill, energetic, cozy, noir" value="chill" />
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <button id="generate">Generate</button>
+          <button id="toggle-animate">Toggle Animate</button>
+          <button id="copy-css">Copy CSS</button>
+        </div>
+        <div class="small" style="margin-top:8px">Tip: short descriptive words give consistent vibes.</div>
+      </div>
+
+      <div class="card" style="flex:1.2">
+        <label>Preview</label>
+        <div id="preview" class="preview">Your vibe appears here</div>
+
+        <div style="display:flex;gap:8px;align-items:center;margin-top:10px">
+          <button id="save-preset">Save Preset</button>
+          <button id="export-presets">Export</button>
+          <button id="import-presets">Import</button>
+        </div>
+
+        <div class="presets" id="presets"></div>
+      </div>
+    </section>
+
+    <footer>
+      <div class="small">VibeFuse — client-only. Saves presets to browser localStorage.</div>
+    </footer>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
