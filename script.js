@@ -1,4 +1,4 @@
-// script.js — core VibeFuse functionality (commit 2)
+// script.js — VibeFuse with persistence and presets (commit 3)
 (() => {
   // DOM refs
   const moodInput = document.getElementById('mood');
@@ -6,9 +6,14 @@
   const preview = document.getElementById('preview');
   const toggleAnimateBtn = document.getElementById('toggle-animate');
   const copyCssBtn = document.getElementById('copy-css');
+  const savePresetBtn = document.getElementById('save-preset');
+  const presetsWrap = document.getElementById('presets');
+  const exportBtn = document.getElementById('export-presets');
+  const importBtn = document.getElementById('import-presets');
 
   let animated = true;
   let current = null;
+  const LS_KEY = 'vibefuse.presets.v1';
 
   // Simple deterministic hash -> seed
   function hashStringToSeed(str) {
@@ -56,16 +61,12 @@
     preview.dataset.css = css;
     preview.textContent = ''; // we will show small label
     preview.style.position = 'relative';
-
-    // remove any existing animation rules by clearing inline background size/position
     preview.style.backgroundSize = '';
     preview.style.animation = '';
 
     if (animate) {
-      // subtle animated background-position using CSS animation
       preview.style.backgroundSize = '200% 200%';
       preview.style.animation = 'vibeShift 8s ease-in-out infinite';
-      // ensure keyframes are present
       ensureKeyframes();
     }
   }
@@ -89,7 +90,58 @@
     }
   }
 
-  // UI actions
+  // LocalStorage helpers
+  function loadPresets() {
+    try {
+      const raw = localStorage.getItem(LS_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      console.warn('Failed to load presets', e);
+      return [];
+    }
+  }
+  function savePresets(arr) {
+    localStorage.setItem(LS_KEY, JSON.stringify(arr));
+  }
+
+  // Render presets list
+  function renderPresets() {
+    const list = loadPresets();
+    presetsWrap.innerHTML = '';
+    if (!list.length) {
+      const d = document.createElement('div');
+      d.className = 'small';
+      d.textContent = 'No presets saved yet';
+      presetsWrap.appendChild(d);
+      return;
+    }
+    list.forEach((p, idx) => {
+      const el = document.createElement('div');
+      el.className = 'preset';
+      el.title = `${p.mood} — click to apply. Right-click to remove.`;
+      el.textContent = p.mood || `preset ${idx+1}`;
+      el.style.background = `linear-gradient(135deg, ${p.colors[0]}, ${p.colors[1]})`;
+      el.addEventListener('click', () => {
+        current = p;
+        moodInput.value = p.mood;
+        animated = p.animated ?? true;
+        applyGradient(p.colors, {animate: animated});
+        preview.textContent = p.mood.toUpperCase();
+      });
+      el.addEventListener('contextmenu', (ev) => {
+        ev.preventDefault();
+        if (confirm(`Remove preset "${p.mood}"?`)) {
+          const arr = loadPresets();
+          arr.splice(idx,1);
+          savePresets(arr);
+          renderPresets();
+        }
+      });
+      presetsWrap.appendChild(el);
+    });
+  }
+
+  // actions
   function generateFromInput() {
     const mood = moodInput.value || '';
     const colors = generateColorsFromMood(mood);
@@ -101,6 +153,7 @@
   function toggleAnimate() {
     animated = !animated;
     if (current) applyGradient(current.colors, {animate: animated});
+    // visual feedback
     toggleAnimateBtn.textContent = animated ? 'Toggle Animate' : 'Toggle Animate';
   }
 
@@ -117,11 +170,72 @@
     }
   }
 
+  function saveCurrentPreset() {
+    if (!current) return alert('Generate a vibe first.');
+    const arr = loadPresets();
+    // keep uniqueness by mood
+    const existing = arr.findIndex(p => (p.mood || '').toLowerCase() === (current.mood||'').toLowerCase());
+    if (existing >= 0) {
+      if (!confirm('A preset with that mood exists. Overwrite?')) return;
+      arr.splice(existing,1);
+    }
+    arr.unshift({...current, animated});
+    // cap to 30 presets
+    if (arr.length > 30) arr.length = 30;
+    savePresets(arr);
+    renderPresets();
+  }
+
+  function exportPresets() {
+    const arr = loadPresets();
+    const blob = new Blob([JSON.stringify({exportedAt: new Date().toISOString(), presets: arr}, null, 2)], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'vibefuse-presets.json';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  function importPresets() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'application/json';
+    input.onchange = () => {
+      const f = input.files[0];
+      if (!f) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const parsed = JSON.parse(reader.result);
+          const incoming = parsed.presets ?? parsed;
+          if (!Array.isArray(incoming)) throw new Error('Invalid file format');
+          const cur = loadPresets();
+          // merge (incoming first)
+          const merged = [...incoming, ...cur].slice(0, 30);
+          savePresets(merged);
+          renderPresets();
+          alert('Presets imported.');
+        } catch (e) {
+          alert('Failed to import presets: ' + e.message);
+        }
+      };
+      reader.readAsText(f);
+    };
+    input.click();
+  }
+
   // wire events
   generateBtn.addEventListener('click', generateFromInput);
   toggleAnimateBtn.addEventListener('click', () => { toggleAnimate(); });
   copyCssBtn.addEventListener('click', copyCssToClipboard);
+  savePresetBtn.addEventListener('click', saveCurrentPreset);
+  exportBtn.addEventListener('click', exportPresets);
+  importBtn.addEventListener('click', importPresets);
 
-  // initial generate
+  // initial
+  renderPresets();
   generateFromInput();
 })();
